@@ -319,6 +319,16 @@ body {
 .empty-state p { font-size: 14px; }
 
 /* ── Notify banner ── */
+.badge-failed { background: #F5F5F5; color: #999; }
+
+.game-card.failed {
+  opacity: 0.6;
+  background: var(--paper-dark);
+}
+.game-card.failed .game-title {
+  text-decoration: line-through;
+  color: var(--ink-soft);
+}
 .notify-banner {
   display: flex; align-items: flex-start; gap: 10px;
   background: #E8F5E9;
@@ -826,6 +836,21 @@ function loadMyGames() {
 // ════════════════════════════════════════════════
 //  渲染牌局卡片
 // ════════════════════════════════════════════════
+function isGameExpired(g) {
+  if (!g.date || !g.time) return false;
+  try {
+    const today = new Date();
+    const year = today.getFullYear();
+    let dateStr = g.date;
+    if (dateStr === '今天') dateStr = today.toLocaleDateString('zh-TW', {year:'numeric',month:'2-digit',day:'2-digit'}).replace(/\//g, '-');
+    else if (dateStr === '明天') { const d = new Date(today); d.setDate(d.getDate()+1); dateStr = d.toLocaleDateString('zh-TW', {year:'numeric',month:'2-digit',day:'2-digit'}).replace(/\//g, '-'); }
+    else dateStr = dateStr.replace(/\//g, '-');
+    const gameTime = new Date(`${year}/${dateStr} ${g.time}`);
+    if (isNaN(gameTime)) return false;
+    return new Date() > gameTime;
+  } catch(e) { return false; }
+}
+
 function renderCard(g, isMine) {
   const count = g.members ? g.members.length : 0;
   const max = g.maxMembers || 4;
@@ -833,12 +858,15 @@ function renderCard(g, isMine) {
   const isFull = need === 0;
   const isHost = currentUser && g.hostId === currentUser.id;
   const isMember = currentUser && g.members && g.members.some(m => m.id === currentUser.id);
+  const expired = !isFull && isGameExpired(g);
 
-  const badge = isFull
-    ? `<span class="badge badge-full">已滿</span>`
-    : need === 1
-      ? `<span class="badge badge-one">缺 1 人</span>`
-      : `<span class="badge badge-need">缺 ${need} 人</span>`;
+  const badge = expired
+    ? `<span class="badge badge-failed">揪失敗</span>`
+    : isFull
+      ? `<span class="badge badge-full">已滿</span>`
+      : need === 1
+        ? `<span class="badge badge-one">缺 1 人</span>`
+        : `<span class="badge badge-need">缺 ${need} 人</span>`;
 
   const slots = Array.from({ length: max }, (_, i) => {
     const m = g.members && g.members[i];
@@ -850,7 +878,10 @@ function renderCard(g, isMine) {
   const myTag = (isHost || isMember) ? `<span class="my-tag">${isHost ? '我發起' : '我加入'}</span>` : '';
 
   let actions = '';
-  if (isHost) {
+  if (expired) {
+    actions = `<button class="btn" disabled style="opacity:.4;cursor:default;">已截止</button>`;
+    if (isHost) actions += ` <button class="btn btn-danger" onclick="cancelGame('${g.id}')">移除</button>`;
+  } else if (isHost) {
     if (!isFull) {
       actions = `<button class="btn" disabled style="opacity:.4;cursor:default;">✓ 我發起</button>`;
     } else {
@@ -867,7 +898,7 @@ function renderCard(g, isMine) {
   }
 
   return `
-  <div class="game-card" id="card-${g.id}">
+  <div class="game-card ${expired ? 'failed' : ''}" id="card-${g.id}">
     <div class="game-card-top">
       <div>
         <div class="game-title">${g.title || g.table}${myTag}</div>
@@ -1101,6 +1132,34 @@ function showToast(msg) {
 // ════════════════════════════════════════════════
 loadSavedUser();
 loadGames();
+
+// 每分鐘檢查過期牌局，自動清除超過5分鐘的揪失敗牌局
+setInterval(() => {
+  if (demoMode) return;
+  db.collection('games').where('active', '==', true).get().then(snap => {
+    snap.docs.forEach(doc => {
+      const g = { id: doc.id, ...doc.data() };
+      const count = g.members ? g.members.length : 0;
+      const max = g.maxMembers || 4;
+      if (count >= max) return;
+      if (!g.date || !g.time) return;
+      try {
+        const today = new Date();
+        const year = today.getFullYear();
+        let dateStr = g.date;
+        if (dateStr === '今天') dateStr = today.toLocaleDateString('zh-TW', {year:'numeric',month:'2-digit',day:'2-digit'}).replace(/\//g, '-');
+        else if (dateStr === '明天') { const d = new Date(today); d.setDate(d.getDate()+1); dateStr = d.toLocaleDateString('zh-TW', {year:'numeric',month:'2-digit',day:'2-digit'}).replace(/\//g, '-'); }
+        else dateStr = dateStr.replace(/\//g, '-');
+        const gameTime = new Date(`${year}/${dateStr} ${g.time}`);
+        if (isNaN(gameTime)) return;
+        const diffMin = (new Date() - gameTime) / 60000;
+        if (diffMin >= 5) {
+          doc.ref.update({ active: false });
+        }
+      } catch(e) {}
+    });
+  });
+}, 60000);
 </script>
 </body>
 </html>
