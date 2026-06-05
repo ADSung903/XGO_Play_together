@@ -836,19 +836,34 @@ function loadMyGames() {
 // ════════════════════════════════════════════════
 //  渲染牌局卡片
 // ════════════════════════════════════════════════
-function isGameExpired(g) {
-  if (!g.date || !g.time) return false;
+function parseGameTime(g) {
+  if (!g.date || !g.time) return null;
   try {
-    const today = new Date();
-    const year = today.getFullYear();
-    let dateStr = g.date;
-    if (dateStr === '今天') dateStr = today.toLocaleDateString('zh-TW', {year:'numeric',month:'2-digit',day:'2-digit'}).replace(/\//g, '-');
-    else if (dateStr === '明天') { const d = new Date(today); d.setDate(d.getDate()+1); dateStr = d.toLocaleDateString('zh-TW', {year:'numeric',month:'2-digit',day:'2-digit'}).replace(/\//g, '-'); }
-    else dateStr = dateStr.replace(/\//g, '-');
-    const gameTime = new Date(`${year}/${dateStr} ${g.time}`);
-    if (isNaN(gameTime)) return false;
-    return new Date() > gameTime;
-  } catch(e) { return false; }
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    let dateStr;
+    if (g.date === '今天') dateStr = `${y}/${m}/${d}`;
+    else if (g.date === '明天') {
+      const tom = new Date(now); tom.setDate(tom.getDate() + 1);
+      dateStr = `${tom.getFullYear()}/${String(tom.getMonth()+1).padStart(2,'0')}/${String(tom.getDate()).padStart(2,'0')}`;
+    } else {
+      dateStr = g.date.replace(/-/g, '/');
+      if (!dateStr.includes(String(y))) dateStr = `${y}/${dateStr}`;
+    }
+    const t = new Date(`${dateStr} ${g.time}`);
+    return isNaN(t) ? null : t;
+  } catch(e) { return null; }
+}
+
+function isGameExpired(g) {
+  const count = g.members ? g.members.length : 0;
+  const max = g.maxMembers || 4;
+  if (count >= max) return false;
+  const t = parseGameTime(g);
+  if (!t) return false;
+  return new Date() > t;
 }
 
 function renderCard(g, isMine) {
@@ -1144,14 +1159,8 @@ setInterval(() => {
       if (count >= max) return;
       if (!g.date || !g.time) return;
       try {
-        const today = new Date();
-        const year = today.getFullYear();
-        let dateStr = g.date;
-        if (dateStr === '今天') dateStr = today.toLocaleDateString('zh-TW', {year:'numeric',month:'2-digit',day:'2-digit'}).replace(/\//g, '-');
-        else if (dateStr === '明天') { const d = new Date(today); d.setDate(d.getDate()+1); dateStr = d.toLocaleDateString('zh-TW', {year:'numeric',month:'2-digit',day:'2-digit'}).replace(/\//g, '-'); }
-        else dateStr = dateStr.replace(/\//g, '-');
-        const gameTime = new Date(`${year}/${dateStr} ${g.time}`);
-        if (isNaN(gameTime)) return;
+        const gameTime = parseGameTime(g);
+        if (!gameTime) return;
         const diffMin = (new Date() - gameTime) / 60000;
         if (diffMin >= 5) {
           doc.ref.update({ active: false });
