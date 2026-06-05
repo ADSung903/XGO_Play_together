@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>店主後台 — 我家相公</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600;700&family=Noto+Sans+TC:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<style>
+:root {
+  --red: #C0392B; --red-dark: #96281B; --red-light: #F9EAEA;
+  --gold: #C9A84C; --gold-light: #FBF3DC;
+  --ink: #1A1208; --ink-soft: #4A3B2A;
+  --paper: #FAF7F0; --paper-dark: #F0EBE0;
+  --white: #FFFFFF;
+  --border: rgba(26,18,8,0.12);
+  --green: #27AE60; --green-light: #E8F5E9;
+  --radius: 10px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; overflow-x: hidden; }
+body { font-family: 'Noto Sans TC', sans-serif; background: var(--paper); color: var(--ink); min-height: 100vh; }
+
+/* ── Login ── */
+.pin-screen {
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--ink);
+}
+.pin-card {
+  background: var(--white);
+  border-radius: 16px;
+  padding: 2.5rem 2rem;
+  text-align: center;
+  width: calc(100% - 2rem);
+  max-width: 320px;
+}
+.pin-icon { font-size: 40px; margin-bottom: 12px; }
+.pin-card h2 { font-family: 'Noto Serif TC', serif; font-size: 18px; color: var(--gold); margin-bottom: 4px; }
+.pin-card p { font-size: 13px; color: var(--ink-soft); margin-bottom: 1.5rem; }
+.pin-dots { display: flex; justify-content: center; gap: 12px; margin-bottom: 1.5rem; }
+.pin-dot {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 2px solid var(--border);
+  background: transparent;
+  transition: background 0.15s;
+}
+.pin-dot.filled { background: var(--ink); border-color: var(--ink); }
+.pin-keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px; }
+.pin-key {
+  height: 52px; border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--paper);
+  font-size: 20px; font-weight: 500;
+  cursor: pointer; font-family: inherit;
+  color: var(--ink);
+  transition: background 0.1s;
+}
+.pin-key:active { background: var(--paper-dark); }
+.pin-key.del { font-size: 16px; color: var(--ink-soft); }
+.pin-error { font-size: 13px; color: var(--red); margin-top: 8px; min-height: 20px; }
+
+/* ── Admin UI ── */
+.admin-wrap { display: none; }
+.admin-header {
+  background: var(--ink);
+  color: var(--white);
+  padding: 0 1rem;
+  height: 56px;
+  display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; z-index: 100;
+}
+.admin-logo { font-family: 'Noto Serif TC', serif; font-size: 16px; font-weight: 700; }
+.admin-logo span { color: var(--gold); }
+.btn-logout { font-size: 12px; color: rgba(255,255,255,0.6); background: transparent; border: 1px solid rgba(255,255,255,0.2); padding: 5px 12px; border-radius: var(--radius); cursor: pointer; font-family: inherit; }
+.btn-logout:hover { color: white; border-color: rgba(255,255,255,0.5); }
+
+.admin-main { padding: 1rem; max-width: 640px; margin: 0 auto; }
+
+/* ── Stats ── */
+.stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 1.25rem; }
+.stat-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.875rem 1rem;
+  text-align: center;
+}
+.stat-num { font-size: 26px; font-weight: 500; color: var(--ink); font-family: 'Noto Serif TC', serif; }
+.stat-label { font-size: 11px; color: var(--ink-soft); margin-top: 2px; }
+
+/* ── Filter ── */
+.filter-row { display: flex; gap: 8px; margin-bottom: 1rem; align-items: center; flex-wrap: wrap; }
+.filter-label { font-size: 12px; color: var(--ink-soft); }
+.filter-btn {
+  font-size: 12px; padding: 5px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: transparent; color: var(--ink-soft);
+  cursor: pointer; font-family: inherit;
+  transition: all 0.15s;
+}
+.filter-btn.active { background: var(--ink); color: var(--white); border-color: var(--ink); }
+
+/* ── Game rows ── */
+.section-title {
+  font-size: 12px; font-weight: 500;
+  color: var(--ink-soft);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+.game-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 1.5rem; }
+.game-row {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.875rem 1rem;
+}
+.game-row-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+.game-row-title { font-size: 14px; font-weight: 500; color: var(--ink); }
+.game-row-time { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+.badge { font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
+.badge-full { background: var(--green-light); color: #1B5E20; }
+.badge-open { background: var(--gold-light); color: #7A5C00; }
+.badge-cancelled { background: #F5F5F5; color: #999; }
+.members-list { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.member-chip {
+  display: flex; align-items: center; gap: 5px;
+  background: var(--paper-dark);
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 12px; color: var(--ink-soft);
+}
+.member-chip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+.game-row-actions { display: flex; gap: 6px; }
+.btn-sm {
+  font-size: 12px; padding: 4px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: transparent; color: var(--ink);
+  cursor: pointer; font-family: inherit;
+  transition: background 0.15s;
+}
+.btn-sm:hover { background: var(--paper-dark); }
+.btn-sm.danger { color: var(--red); border-color: rgba(192,57,43,0.3); }
+.btn-sm.danger:hover { background: var(--red-light); }
+
+.empty { text-align: center; padding: 2rem; color: var(--ink-soft); font-size: 14px; opacity: 0.6; }
+.loading { text-align: center; padding: 2rem; color: var(--ink-soft); font-size: 14px; }
+
+/* ── Members tab ── */
+.member-row {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 8px;
+}
+.member-info { display: flex; align-items: center; gap: 10px; }
+.member-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--gold-light);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 500; color: #7A5C00;
+  flex-shrink: 0;
+}
+.member-name { font-size: 14px; font-weight: 500; }
+.member-sub { font-size: 11px; color: var(--ink-soft); margin-top: 1px; }
+.member-count { font-size: 12px; color: var(--ink-soft); text-align: right; }
+
+/* ── Tabs ── */
+.admin-tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 1rem; background: var(--white); position: sticky; top: 56px; z-index: 90; }
+.admin-tab {
+  flex: 1; padding: 11px 0; text-align: center;
+  font-size: 13px; font-weight: 500;
+  color: var(--ink-soft); background: transparent;
+  border: none; border-bottom: 2px solid transparent;
+  cursor: pointer; font-family: inherit;
+  transition: all 0.15s;
+}
+.admin-tab.active { color: var(--red); border-bottom-color: var(--red); }
+.tab-section { display: none; }
+.tab-section.active { display: block; }
+</style>
+</head>
+<body>
+
+<!-- PIN Screen -->
+<div class="pin-screen" id="pinScreen">
+  <div class="pin-card">
+    <div class="pin-icon">🀄</div>
+    <h2>我家相公</h2>
+    <p>店主後台・請輸入密碼</p>
+    <div class="pin-dots">
+      <div class="pin-dot" id="d0"></div>
+      <div class="pin-dot" id="d1"></div>
+      <div class="pin-dot" id="d2"></div>
+      <div class="pin-dot" id="d3"></div>
+    </div>
+    <div class="pin-keypad">
+      <button class="pin-key" onclick="pinInput('1')">1</button>
+      <button class="pin-key" onclick="pinInput('2')">2</button>
+      <button class="pin-key" onclick="pinInput('3')">3</button>
+      <button class="pin-key" onclick="pinInput('4')">4</button>
+      <button class="pin-key" onclick="pinInput('5')">5</button>
+      <button class="pin-key" onclick="pinInput('6')">6</button>
+      <button class="pin-key" onclick="pinInput('7')">7</button>
+      <button class="pin-key" onclick="pinInput('8')">8</button>
+      <button class="pin-key" onclick="pinInput('9')">9</button>
+      <button class="pin-key" onclick="pinInput('0')" style="grid-column:2;">0</button>
+      <button class="pin-key del" onclick="pinDelete()">⌫</button>
+    </div>
+    <div class="pin-error" id="pinError"></div>
+  </div>
+</div>
+
+<!-- Admin UI -->
+<div class="admin-wrap" id="adminWrap">
+  <div class="admin-header">
+    <div class="admin-logo">🀄 <span>我家相公</span> 後台</div>
+    <button class="btn-logout" onclick="adminLogout()">登出</button>
+  </div>
+
+  <div class="stats-grid admin-main" style="padding-bottom:0;">
+    <div class="stat-card">
+      <div class="stat-num" id="statTotal">—</div>
+      <div class="stat-label">今日牌局</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" id="statOpen">—</div>
+      <div class="stat-label">尚有空位</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" id="statMembers">—</div>
+      <div class="stat-label">今日牌友</div>
+    </div>
+  </div>
+
+  <div class="admin-tabs">
+    <button class="admin-tab active" onclick="switchAdminTab('games', this)">牌局管理</button>
+    <button class="admin-tab" onclick="switchAdminTab('members', this)">牌友名單</button>
+  </div>
+
+  <div class="admin-main">
+
+    <div id="games" class="tab-section active">
+      <div class="filter-row">
+        <span class="filter-label">篩選：</span>
+        <button class="filter-btn active" onclick="setFilter('all', this)">全部</button>
+        <button class="filter-btn" onclick="setFilter('open', this)">缺人中</button>
+        <button class="filter-btn" onclick="setFilter('full', this)">已滿</button>
+      </div>
+      <div id="gamesList"><div class="loading">載入中…</div></div>
+    </div>
+
+    <div id="members" class="tab-section">
+      <div id="membersList"><div class="loading">載入中…</div></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const ADMIN_PIN = '0903';
+
+const firebaseConfig = {
+  apiKey:            "AIzaSyAwYNEF2AyoizRNuI_D6UNTO05JviYZgBQ",
+  authDomain:        "xgogame.firebaseapp.com",
+  projectId:         "xgogame",
+  storageBucket:     "xgogame.firebasestorage.app",
+  messagingSenderId: "541839411960",
+  appId:             "1:541839411960:web:343fc2f152899c809a090d"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+let pinValue = '';
+let currentFilter = 'all';
+let allGames = [];
+
+// ── PIN ──
+function pinInput(num) {
+  if (pinValue.length >= 4) return;
+  pinValue += num;
+  document.getElementById('d' + (pinValue.length - 1)).classList.add('filled');
+  if (pinValue.length === 4) {
+    setTimeout(checkPin, 150);
+  }
+}
+function pinDelete() {
+  if (!pinValue.length) return;
+  pinValue = pinValue.slice(0, -1);
+  document.getElementById('d' + pinValue.length).classList.remove('filled');
+  document.getElementById('pinError').textContent = '';
+}
+function checkPin() {
+  if (pinValue === ADMIN_PIN) {
+    sessionStorage.setItem('admin_auth', '1');
+    showAdmin();
+  } else {
+    document.getElementById('pinError').textContent = '密碼錯誤，請再試一次';
+    pinValue = '';
+    for (let i = 0; i < 4; i++) document.getElementById('d' + i).classList.remove('filled');
+  }
+}
+function showAdmin() {
+  document.getElementById('pinScreen').style.display = 'none';
+  document.getElementById('adminWrap').style.display = 'block';
+  loadGames();
+}
+function adminLogout() {
+  sessionStorage.removeItem('admin_auth');
+  location.reload();
+}
+
+// ── 自動登入 ──
+if (sessionStorage.getItem('admin_auth') === '1') showAdmin();
+
+// ── Tab ──
+function switchAdminTab(name, btn) {
+  document.querySelectorAll('.admin-tab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-section').forEach(s => s.classList.remove('active'));
+  document.getElementById(name).classList.add('active');
+  btn.classList.add('active');
+  if (name === 'members') renderMembers();
+}
+
+// ── Filter ──
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderGames();
+}
+
+// ── 載入資料 ──
+function loadGames() {
+  db.collection('games')
+    .onSnapshot(snap => {
+      allGames = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => {
+          const ta = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt || 0);
+          const tb = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt || 0);
+          return tb - ta;
+        });
+      renderStats();
+      renderGames();
+      renderMembers();
+    });
+}
+
+// ── Stats ──
+function renderStats() {
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const todayGames = allGames.filter(g => {
+    if (!g.active) return false;
+    const ct = g.createdAt?.toMillis ? g.createdAt.toMillis() : (g.createdAt || 0);
+    return ct >= today.getTime();
+  });
+  const open = todayGames.filter(g => (g.members?.length || 0) < (g.maxMembers || 4));
+  const memberSet = new Set();
+  todayGames.forEach(g => g.members?.forEach(m => memberSet.add(m.id)));
+  document.getElementById('statTotal').textContent = todayGames.length;
+  document.getElementById('statOpen').textContent = open.length;
+  document.getElementById('statMembers').textContent = memberSet.size;
+}
+
+// ── 牌局列表 ──
+function renderGames() {
+  const el = document.getElementById('gamesList');
+  let games = allGames;
+  if (currentFilter === 'open') games = games.filter(g => g.active && (g.members?.length || 0) < (g.maxMembers || 4));
+  if (currentFilter === 'full') games = games.filter(g => g.active && (g.members?.length || 0) >= (g.maxMembers || 4));
+
+  if (!games.length) { el.innerHTML = '<div class="empty">沒有符合的牌局</div>'; return; }
+
+  el.innerHTML = games.map(g => {
+    const count = g.members?.length || 0;
+    const max = g.maxMembers || 4;
+    const isFull = count >= max;
+    const isActive = g.active !== false;
+    const badge = !isActive
+      ? `<span class="badge badge-cancelled">已取消</span>`
+      : isFull
+        ? `<span class="badge badge-full">已滿 ${count}/${max}</span>`
+        : `<span class="badge badge-open">缺 ${max - count} 人</span>`;
+
+    const members = (g.members || []).map(m =>
+      `<div class="member-chip"><div class="dot"></div>${m.name}</div>`
+    ).join('');
+
+    const ct = g.createdAt?.toMillis ? g.createdAt.toMillis() : (g.createdAt || 0);
+    const timeStr = ct ? new Date(ct).toLocaleString('zh-TW', { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '—';
+
+    return `
+    <div class="game-row">
+      <div class="game-row-top">
+        <div>
+          <div class="game-row-title">${g.title || '找牌咖'}</div>
+          <div class="game-row-time">🕐 ${g.date || ''} ${g.time || ''} ・ 發起於 ${timeStr}</div>
+        </div>
+        ${badge}
+      </div>
+      <div class="members-list">${members || '<span style="font-size:12px;color:#aaa;">無成員</span>'}</div>
+      ${isActive ? `<div class="game-row-actions">
+        <button class="btn-sm danger" onclick="deleteGame('${g.id}')">刪除牌局</button>
+      </div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+// ── 牌友名單 ──
+function renderMembers() {
+  const el = document.getElementById('membersList');
+  const memberMap = {};
+  allGames.filter(g => g.active !== false).forEach(g => {
+    (g.members || []).forEach(m => {
+      if (!memberMap[m.id]) memberMap[m.id] = { name: m.name, count: 0 };
+      memberMap[m.id].count++;
+    });
+  });
+  const members = Object.entries(memberMap).sort((a, b) => b[1].count - a[1].count);
+  if (!members.length) { el.innerHTML = '<div class="empty">還沒有牌友資料</div>'; return; }
+  el.innerHTML = members.map(([id, m]) => `
+    <div class="member-row">
+      <div class="member-info">
+        <div class="member-avatar">${m.name.slice(0,1)}</div>
+        <div>
+          <div class="member-name">${m.name}</div>
+          <div class="member-sub">LINE ID: ${id.slice(0,12)}…</div>
+        </div>
+      </div>
+      <div class="member-count">參與 ${m.count} 局</div>
+    </div>`
+  ).join('');
+}
+
+// ── 刪除牌局 ──
+function deleteGame(id) {
+  if (!confirm('確定要刪除這個牌局嗎？')) return;
+  db.collection('games').doc(id).update({ active: false })
+    .then(() => showToast('已刪除'));
+}
+
+// ── Toast ──
+function showToast(msg) {
+  let t = document.getElementById('adminToast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'adminToast';
+    t.style = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(80px);background:#1A1208;color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;z-index:999;transition:transform 0.3s;white-space:nowrap;';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.transform = 'translateX(-50%) translateY(0)';
+  setTimeout(() => t.style.transform = 'translateX(-50%) translateY(80px)', 2500);
+}
+</script>
+</body>
+</html>
