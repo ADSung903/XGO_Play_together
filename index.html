@@ -850,16 +850,20 @@ function renderCard(g, isMine) {
   const myTag = (isHost || isMember) ? `<span class="my-tag">${isHost ? '我發起' : '我加入'}</span>` : '';
 
   let actions = '';
-  if (isFull) {
+  if (isHost) {
+    if (!isFull) {
+      actions = `<button class="btn" disabled style="opacity:.4;cursor:default;">✓ 我發起</button>`;
+    } else {
+      actions = `<button class="btn" disabled style="opacity:.4;cursor:default;">已額滿</button>`;
+    }
+    actions += ` <button class="btn btn-danger" onclick="cancelGame('${g.id}')">取消牌局</button>`;
+  } else if (isFull) {
     actions = `<button class="btn" disabled style="opacity:.4;cursor:default;">已額滿</button>`;
   } else if (isMember) {
     actions = `<button class="btn" disabled style="opacity:.4;cursor:default;">✓ 已加入</button>`;
-    if (isHost) actions += ` <button class="btn btn-danger" onclick="cancelGame('${g.id}')">取消牌局</button>`;
+    actions += ` <button class="btn btn-danger" onclick="leaveGame('${g.id}')">退出牌局</button>`;
   } else {
     actions = `<button class="btn btn-join" onclick="joinGame('${g.id}')">我要加入</button>`;
-  }
-  if (isMine && isHost && !isFull) {
-    actions += ` <button class="btn btn-danger" onclick="cancelGame('${g.id}')">取消牌局</button>`;
   }
 
   return `
@@ -964,6 +968,26 @@ function cancelGame(id) {
   }
   db.collection('games').doc(id).update({ active: false })
     .then(() => showToast('牌局已取消'));
+}
+
+function leaveGame(id) {
+  if (!currentUser) return;
+  if (!confirm('確定要退出這個牌局嗎？')) return;
+  if (demoMode) {
+    const g = demoGames.find(g => g.id === id);
+    if (g) g.members = g.members.filter(m => m.id !== currentUser.id);
+    showToast('已退出牌局');
+    loadGames();
+    return;
+  }
+  const ref = db.collection('games').doc(id);
+  db.runTransaction(async tx => {
+    const doc = await tx.get(ref);
+    const data = doc.data();
+    const newMembers = data.members.filter(m => m.id !== currentUser.id);
+    tx.update(ref, { members: newMembers });
+  }).then(() => showToast('已退出牌局'))
+    .catch(() => showToast('退出失敗，請再試'));
 }
 
 // ════════════════════════════════════════════════
