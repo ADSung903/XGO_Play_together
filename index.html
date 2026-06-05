@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>湊牌咖 — 我家相公桌遊體驗館</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600;700&family=Noto+Sans+TC:wght@300;400;500&display=swap" rel="stylesheet">
@@ -32,11 +32,18 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+html, body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
 body {
   font-family: 'Noto Sans TC', sans-serif;
   background: var(--paper);
   color: var(--ink);
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 /* ── Header ── */
@@ -51,6 +58,8 @@ body {
   position: sticky;
   top: 0;
   z-index: 100;
+  width: 100%;
+  max-width: 100%;
 }
 .site-logo {
   font-family: 'Noto Serif TC', serif;
@@ -154,6 +163,8 @@ body {
   position: sticky;
   top: 56px;
   z-index: 90;
+  width: 100%;
+  max-width: 100%;
 }
 .tab-btn {
   flex: 1;
@@ -224,11 +235,12 @@ body {
 
 .game-meta {
   display: flex;
-  gap: 12px;
+  gap: 8px 12px;
   font-size: 12px;
   color: var(--ink-soft);
   margin-bottom: 12px;
   flex-wrap: wrap;
+  max-width: 100%;
 }
 .game-meta-item { display: flex; align-items: center; gap: 4px; }
 
@@ -347,7 +359,7 @@ body {
   border-color: var(--gold);
   background: var(--white);
 }
-.form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1rem; }
+.form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1rem; max-width: 100%; }
 
 .btn-submit {
   width: 100%;
@@ -378,8 +390,9 @@ body {
   border-radius: 16px;
   padding: 2rem 1.5rem;
   text-align: center;
-  max-width: 320px;
-  width: 100%;
+  max-width: 340px;
+  width: calc(100% - 2rem);
+  margin: 0 1rem;
 }
 .login-tiles { font-size: 40px; margin-bottom: 12px; }
 .login-card h3 {
@@ -508,6 +521,18 @@ body {
 
 /* ── Loading ── */
 .loading { text-align: center; padding: 2rem; color: var(--ink-soft); font-size: 14px; }
+
+@media (max-width: 380px) {
+  .form-row-2 { grid-template-columns: 1fr; }
+  .site-logo { font-size: 15px; }
+  .hero h2 { font-size: 18px; }
+  .slot { width: 32px; height: 32px; font-size: 11px; }
+}
+@media (max-width: 480px) {
+  .main { padding: 0.75rem; }
+  .game-card { padding: 0.875rem; }
+  .card-actions { flex-wrap: wrap; }
+}
 </style>
 </head>
 <body>
