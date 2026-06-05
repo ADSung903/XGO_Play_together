@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>即時桌況 — 我家相公</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600;700&family=Noto+Sans+TC:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --red: #C0392B;
+  --gold: #C9A84C;
+  --gold-light: #FBF3DC;
+  --ink: #1A1208;
+  --ink-soft: #4A3B2A;
+  --paper: #FAF7F0;
+  --paper-dark: #F0EBE0;
+  --white: #FFFFFF;
+  --border: rgba(26,18,8,0.12);
+  --green: #27AE60;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; overflow-x: hidden; }
+body {
+  font-family: 'Noto Sans TC', sans-serif;
+  background: var(--ink);
+  color: var(--white);
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Header ── */
+.header {
+  padding: 1.25rem 1rem 1rem;
+  text-align: center;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.header-sub {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--gold);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.header h1 {
+  font-family: 'Noto Serif TC', serif;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+.header p {
+  font-size: 12px;
+  color: rgba(255,255,255,0.45);
+  margin-top: 4px;
+}
+
+/* ── Status bar ── */
+.status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 1rem;
+  background: rgba(255,255,255,0.04);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.live-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--green);
+  font-weight: 500;
+}
+.live-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--green);
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+.refresh-info {
+  font-size: 11px;
+  color: rgba(255,255,255,0.35);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.countdown {
+  font-size: 11px;
+  color: var(--gold);
+  font-weight: 500;
+  min-width: 20px;
+  text-align: right;
+}
+
+/* ── Image area ── */
+.img-wrap {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 1rem;
+  background: #0f0a04;
+}
+.table-img {
+  width: 100%;
+  max-width: 480px;
+  height: auto;
+  display: block;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.img-loading {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  color: rgba(255,255,255,0.3);
+  font-size: 13px;
+  padding: 3rem 0;
+}
+.spinner {
+  width: 28px; height: 28px;
+  border: 2px solid rgba(255,255,255,0.1);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Legend ── */
+.legend {
+  padding: 0.875rem 1rem;
+  background: rgba(255,255,255,0.03);
+  border-top: 1px solid rgba(255,255,255,0.06);
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.5);
+}
+.legend-dot {
+  width: 10px; height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.dot-empty { background: #4CAF50; }
+.dot-occupied { background: #E53935; }
+.dot-reserved { background: #FB8C00; }
+
+/* ── Footer ── */
+.footer {
+  padding: 1rem;
+  text-align: center;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+.footer p {
+  font-size: 12px;
+  color: rgba(255,255,255,0.25);
+  margin-bottom: 10px;
+}
+.btn-mahjong {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 20px;
+  background: var(--gold);
+  color: var(--ink);
+  border: none;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+.btn-mahjong:hover { opacity: 0.85; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-sub">我家相公・龜山銘傳</div>
+  <h1>🀄 即時桌況</h1>
+  <p>24H 桌遊體驗館</p>
+</div>
+
+<div class="status-bar">
+  <div class="live-badge">
+    <div class="live-dot"></div>
+    即時更新中
+  </div>
+  <div class="refresh-info">
+    <span>每</span>
+    <span class="countdown" id="countdown">30</span>
+    <span>秒刷新</span>
+  </div>
+</div>
+
+<div class="img-wrap">
+  <div class="img-loading" id="imgLoading">
+    <div class="spinner"></div>
+    <span>更新中…</span>
+  </div>
+  <img
+    class="table-img"
+    id="tableImg"
+    src="https://www.ctvm.com.tw:8989/tempimag/DMCC01103801_client.png"
+    alt="即時桌況"
+    onload="imgLoaded()"
+    onerror="imgError()"
+  >
+</div>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot dot-empty"></div> 空桌</div>
+  <div class="legend-item"><div class="legend-dot dot-occupied"></div> 使用中</div>
+  <div class="legend-item"><div class="legend-dot dot-reserved"></div> 預約中</div>
+</div>
+
+<div class="footer">
+  <p>找不到牌友？試試看揪玩咖</p>
+  <a class="btn-mahjong" href="https://xgo-play-together.vercel.app">
+    🀄 揪玩咖・找牌友
+  </a>
+</div>
+
+<script>
+let countdownVal = 30;
+let countdownTimer;
+
+function startCountdown() {
+  clearInterval(countdownTimer);
+  countdownVal = 30;
+  document.getElementById('countdown').textContent = countdownVal;
+  countdownTimer = setInterval(() => {
+    countdownVal--;
+    document.getElementById('countdown').textContent = countdownVal;
+    if (countdownVal <= 0) refreshImg();
+  }, 1000);
+}
+
+function refreshImg() {
+  const img = document.getElementById('tableImg');
+  const loading = document.getElementById('imgLoading');
+  img.style.display = 'none';
+  loading.style.display = 'flex';
+  const newImg = new Image();
+  newImg.onload = () => {
+    img.src = newImg.src;
+    img.style.display = 'block';
+    loading.style.display = 'none';
+    startCountdown();
+  };
+  newImg.onerror = () => {
+    img.style.display = 'block';
+    loading.style.display = 'none';
+    startCountdown();
+  };
+  newImg.src = 'https://www.ctvm.com.tw:8989/tempimag/DMCC01103801_client.png?t=' + Date.now();
+}
+
+function imgLoaded() {
+  document.getElementById('imgLoading').style.display = 'none';
+  document.getElementById('tableImg').style.display = 'block';
+  startCountdown();
+}
+
+function imgError() {
+  document.getElementById('imgLoading').style.display = 'none';
+  document.getElementById('tableImg').style.display = 'block';
+  startCountdown();
+}
+</script>
+</body>
+</html>
