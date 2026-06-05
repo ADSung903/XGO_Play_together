@@ -10,6 +10,8 @@
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<!-- LINE LIFF SDK -->
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
 <style>
 :root {
@@ -857,14 +859,26 @@ function loginGuest() {
   showToast(`歡迎，${name}！`);
 }
 function loginLINE() {
-  // ── LINE LIFF 整合 ──────────────────────────────
-  // 1. 到 https://developers.line.biz/ 建立 LINE Login Channel
-  // 2. 建立 LIFF App，網址填你的 GitHub Pages URL
-  // 3. 把 LIFF ID 填到下面
-  // const liffId = 'YOUR_LIFF_ID';
-  // liff.init({ liffId }).then(() => { liff.login(); });
-  // ────────────────────────────────────────────────
-  showToast('LINE 登入需要設定 LIFF ID，請見設定說明');
+  if (typeof liff === 'undefined') {
+    showToast('LINE 環境載入中，請稍後再試');
+    return;
+  }
+  const liffId = '2010305005-IVMKWo41';
+  liff.init({ liffId }).then(() => {
+    if (!liff.isLoggedIn()) {
+      liff.login();
+    } else {
+      liff.getProfile().then(profile => {
+        currentUser = { id: profile.userId, name: profile.displayName, avatar: profile.pictureUrl };
+        closeLogin();
+        updateUserArea();
+        showToast(`歡迎，${profile.displayName}！`);
+      });
+    }
+  }).catch(e => {
+    console.error(e);
+    showToast('LINE 登入失敗，請用暱稱登入');
+  });
 }
 function updateUserArea() {
   if (!currentUser) return;
