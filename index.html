@@ -516,16 +516,7 @@ body {
           <input class="form-input" id="f-time" type="time">
         </div>
       </div>
-      <div class="form-row">
-        <label class="form-label">桌號</label>
-        <select class="form-select" id="f-table">
-          <option value="">選擇桌號</option>
-          <option>1 號桌</option><option>2 號桌</option><option>3 號桌</option>
-          <option>4 號桌</option><option>5 號桌</option><option>6 號桌</option>
-          <option>7 號桌</option><option>8 號桌</option><option>9 號桌</option>
-          <option>10 號桌</option>
-        </select>
-      </div>
+
       <div class="form-row">
         <label class="form-label">備註（可不填）</label>
         <input class="form-input" id="f-note" type="text" placeholder="例：台灣麻將、歡迎新手">
@@ -657,10 +648,18 @@ function loadGames() {
   el.innerHTML = '<div class="loading">載入中…</div>';
   db.collection('games')
     .where('active', '==', true)
-    .orderBy('createdAt', 'desc')
     .onSnapshot(snap => {
-      const games = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const games = snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => {
+          const ta = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt || 0);
+          const tb = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt || 0);
+          return tb - ta;
+        });
       el.innerHTML = games.length ? games.map(g => renderCard(g, false)).join('') : emptyState();
+    }, err => {
+      console.error(err);
+      el.innerHTML = emptyState();
     });
 }
 
@@ -743,7 +742,6 @@ function renderCard(g, isMine) {
     </div>
     <div class="game-meta">
       <span class="game-meta-item">🕐 ${g.date} ${g.time}</span>
-      <span class="game-meta-item">📍 ${g.table}</span>
       ${g.note ? `<span class="game-meta-item">💬 ${g.note}</span>` : ''}
     </div>
     <div class="slots">${slots}</div>
@@ -763,13 +761,13 @@ function createGame() {
   const title = document.getElementById('f-title').value.trim();
   const date  = document.getElementById('f-date').value;
   const time  = document.getElementById('f-time').value;
-  const table = document.getElementById('f-table').value;
   const note  = document.getElementById('f-note').value.trim();
-  if (!date || !time || !table) { showToast('請填寫日期、時間和桌號'); return; }
+  if (!date || !time) { showToast('請填寫日期和時間'); return; }
 
   const dateLabel = formatDate(date);
   const game = {
-    title, table, date: dateLabel, time, note,
+    title: title || '找牌咖',
+    date: dateLabel, time, note,
     host: currentUser.name,
     hostId: currentUser.id,
     members: [{ id: currentUser.id, name: currentUser.name }],
@@ -791,7 +789,9 @@ function createGame() {
     showToast('牌局已發起！');
     switchTab('browse', document.querySelectorAll('.tab-btn')[0]);
     ['f-title','f-date','f-time','f-note'].forEach(id => document.getElementById(id).value = '');
-    document.getElementById('f-table').value = '';
+  }).catch(e => {
+    console.error(e);
+    showToast('發起失敗，請再試一次');
   });
 }
 
